@@ -13,7 +13,7 @@ from unittest.mock import patch, MagicMock, AsyncMock
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from tests.cli.cli_test_base import CLITestBase, TestResult
+from tests.unit.cli_test_base import CLITestBase, TestResult
 
 
 class CLICommandRoutingTestSuite(CLITestBase):

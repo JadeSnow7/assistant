@@ -16,7 +16,7 @@ import os
 # 添加项目路径
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from tests.base import BaseTestSuite, TestResult
+from tests.unit.base import BaseTestSuite, TestResult
 from tests.unit.test_dialog_system import DialogSystemTestSuite
 from tests.unit.test_intelligent_routing import IntelligentRoutingTestSuite
 from tests.unit.test_system_commands import SystemCommandTestSuite

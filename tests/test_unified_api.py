@@ -7,17 +7,17 @@ from unittest.mock import Mock, AsyncMock, patch
 from typing import Dict, Any, List
 
 # 导入待测试模块
-from core.adapters.base import (
+from python.core.adapters.base import (
     BaseAdapter, AdapterManager, UnifiedChatRequest, 
     UnifiedChatResponse, ModelInfo, ProviderType, EngineType
 )
-from core.adapters.openai_adapter import OpenAIAdapter
-from core.adapters.gemini_adapter import GeminiAdapter
-from core.adapters.local_adapter import LlamaCppAdapter, OllamaAdapter
-from core.model_manager import UnifiedModelManager
-from core.gpu_manager import GPUManager, GPUInfo, GPUType
-from core.intelligent_router import IntelligentRouter, TaskAnalyzer, RoutingDecision
-from core.unified_api_gateway import UnifiedAPIGateway
+from python.core.adapters.openai_adapter import OpenAIAdapter
+from python.core.adapters.gemini_adapter import GeminiAdapter
+from python.core.adapters.local_adapter import LlamaCppAdapter, OllamaAdapter
+from python.core.model_manager import UnifiedModelManager
+from python.core.gpu_manager import GPUManager, GPUInfo, GPUType
+from python.core.intelligent_router import IntelligentRouter, TaskAnalyzer, RoutingDecision
+from python.core.unified_api_gateway import UnifiedAPIGateway
 
 
 class TestBaseAdapter:
@@ -179,7 +179,7 @@ class TestGPUManager:
     
     def test_gpu_config_creation(self):
         """测试GPU配置创建"""
-        from core.gpu_manager import GPUConfig
+        from python.core.gpu_manager import GPUConfig
         
         config = GPUConfig(
             enabled=True,

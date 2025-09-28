@@ -7,7 +7,7 @@ import asyncio
 import time
 import json
 from typing import List, Dict, Any, Optional
-from tests.base import BaseTestSuite, TestCase, TestResult, TestMetrics, SecurityTestMixin
+from tests.unit.base import BaseTestSuite, TestCase, TestResult, TestMetrics, SecurityTestMixin
 
 
 class SystemCommandTestSuite(BaseTestSuite, SecurityTestMixin):

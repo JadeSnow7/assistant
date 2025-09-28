@@ -6,7 +6,7 @@
 import asyncio
 import time
 from typing import List, Dict, Any
-from tests.base import BaseTestSuite, TestCase, TestResult, TestMetrics, PerformanceTestMixin
+from tests.unit.base import BaseTestSuite, TestCase, TestResult, TestMetrics, PerformanceTestMixin
 
 
 class DialogSystemTestSuite(BaseTestSuite, PerformanceTestMixin):
