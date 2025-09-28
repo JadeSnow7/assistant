@@ -1,0 +1,87 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alert_rules.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # NEX 应用监控
+  - job_name: 'nex-app'
+    static_configs:
+      - targets: ['host.docker.internal:8000']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # NEX gRPC 监控
+  - job_name: 'nex-grpc'
+    static_configs:
+      - targets: ['host.docker.internal:50051']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # 健康检查监控
+  - job_name: 'nex-health'
+    static_configs:
+      - targets: ['host.docker.internal:8080']
+    metrics_path: '/health'
+    scrape_interval: 5s
+
+  # Prometheus 自监控
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # AlertManager 监控
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
+
+  # Node Exporter 系统监控
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node_exporter:9100']
+
+  # cAdvisor 容器监控
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+  # Grafana 监控
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+
+  # Loki 日志服务监控
+  - job_name: 'loki'
+    static_configs:
+      - targets: ['loki:3100']
+
+  # Jaeger 链路追踪监控
+  - job_name: 'jaeger'
+    static_configs:
+      - targets: ['jaeger:14268']
+
+  # 黑盒监控 (如果需要)
+  - job_name: 'blackbox'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+        - http://host.docker.internal:8000/health
+        - http://host.docker.internal:8000/api/status
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115

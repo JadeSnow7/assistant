@@ -1,0 +1,23 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "nex.fullname" . }}
+  labels:
+    {{- include "nex.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "nex.selectorLabels" . | nindent 6 }}
+      component: backend
+  policyTypes:
+    {{- toYaml .Values.networkPolicy.policyTypes | nindent 4 }}
+  {{- if .Values.networkPolicy.ingress }}
+  ingress:
+    {{- toYaml .Values.networkPolicy.ingress | nindent 4 }}
+  {{- end }}
+  {{- if .Values.networkPolicy.egress }}
+  egress:
+    {{- toYaml .Values.networkPolicy.egress | nindent 4 }}
+  {{- end }}
+{{- end }}

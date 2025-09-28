@@ -1,0 +1,187 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nex-config
+  namespace: nex
+data:
+  # 应用配置
+  app.yaml: |
+    server:
+      host: "0.0.0.0"
+      port: 8000
+      workers: 4
+      timeout: 30
+    
+    grpc:
+      host: "0.0.0.0" 
+      port: 50051
+      max_workers: 10
+      
+    database:
+      type: "sqlite"
+      path: "/app/data/nex.db"
+      
+    logging:
+      level: "INFO"
+      format: "json"
+      file: "/app/logs/nex.log"
+      max_size: "100MB"
+      backup_count: 5
+      
+    cache:
+      type: "memory"
+      ttl: 3600
+      
+    security:
+      rate_limit: 100
+      cors_origins: ["*"]
+      
+  # 监控配置
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+    
+    scrape_configs:
+      - job_name: 'nex-app'
+        static_configs:
+          - targets: ['nex-service:8000']
+        metrics_path: '/metrics'
+        scrape_interval: 10s
+        
+      - job_name: 'nex-grpc'
+        static_configs:
+          - targets: ['nex-service:50051']
+        metrics_path: '/metrics'
+        scrape_interval: 10s
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nex-scripts
+  namespace: nex
+data:
+  entrypoint.sh: |
+    #!/bin/bash
+    set -e
+    
+    echo "Starting NEX application..."
+    
+    # 创建必要的目录
+    mkdir -p /app/data /app/logs
+    
+    # 检查数据库连接
+    if [ -f "/app/data/nex.db" ]; then
+        echo "Database found, checking connection..."
+    else
+        echo "Initializing new database..."
+    fi
+    
+    # 启动健康检查服务
+    python3 -c "
+import asyncio
+import aiohttp
+from aiohttp import web
+import json
+import sqlite3
+import os
+
+async def health_check(request):
+    health = {'status': 'healthy', 'checks': {}}
+    
+    # 检查数据库
+    try:
+        if os.path.exists('/app/data/nex.db'):
+            conn = sqlite3.connect('/app/data/nex.db')
+            conn.execute('SELECT 1')
+            conn.close()
+            health['checks']['database'] = 'ok'
+        else:
+            health['checks']['database'] = 'no_db'
+    except Exception as e:
+        health['checks']['database'] = f'error: {str(e)}'
+        health['status'] = 'unhealthy'
+    
+    # 检查磁盘空间
+    try:
+        import shutil
+        disk_usage = shutil.disk_usage('/app')
+        free_gb = disk_usage.free / (1024**3)
+        if free_gb > 1:
+            health['checks']['disk'] = 'ok'
+        else:
+            health['checks']['disk'] = 'low_space'
+            health['status'] = 'degraded'
+    except Exception as e:
+        health['checks']['disk'] = f'error: {str(e)}'
+    
+    return web.json_response(health)
+
+async def ready_check(request):
+    # 更严格的就绪检查
+    try:
+        # 检查主应用端口
+        import socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        result = sock.connect_ex(('localhost', 8000))
+        sock.close()
+        
+        if result == 0:
+            return web.json_response({'status': 'ready'})
+        else:
+            return web.json_response({'status': 'not_ready'}, status=503)
+    except Exception as e:
+        return web.json_response({'status': 'error', 'message': str(e)}, status=503)
+
+app = web.Application()
+app.router.add_get('/health', health_check)
+app.router.add_get('/ready', ready_check)
+
+if __name__ == '__main__':
+    web.run_app(app, host='0.0.0.0', port=8080)
+" &
+    
+    # 启动主应用
+    exec python3 /app/python/main.py
+    
+  init-db.sh: |
+    #!/bin/bash
+    set -e
+    
+    echo "Initializing database..."
+    
+    # 等待数据库目录可用
+    while [ ! -d "/app/data" ]; do
+        echo "Waiting for data directory..."
+        sleep 1
+    done
+    
+    # 初始化数据库
+    python3 -c "
+import sqlite3
+import os
+
+db_path = '/app/data/nex.db'
+if not os.path.exists(db_path):
+    conn = sqlite3.connect(db_path)
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS system_info (
+            id INTEGER PRIMARY KEY,
+            key TEXT UNIQUE,
+            value TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.execute('''
+        INSERT OR REPLACE INTO system_info (key, value) 
+        VALUES ('initialized', 'true')
+    ''')
+    conn.commit()
+    conn.close()
+    print('Database initialized successfully')
+else:
+    print('Database already exists')
+"
+    
+    echo "Database initialization completed"

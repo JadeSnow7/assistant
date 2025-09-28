@@ -13,7 +13,6 @@ from models.schemas import (
 )
 from agent.orchestrator import AgentOrchestrator
 from core.dependencies import get_orchestrator, get_current_user
-from core.auth import verify_api_key
 
 
 logger = logging.getLogger(__name__)

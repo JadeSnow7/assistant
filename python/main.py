@@ -13,6 +13,9 @@ from agent.api_router import api_router
 from agent.websocket_handler import websocket_router
 from core.config import settings
 from core.grpc_client import GRPCClient
+from core.memory_manager import MemoryManager
+from core.plugin_manager import PluginManager
+from core.cloud_client import CloudClient
 
 
 # 配置日志

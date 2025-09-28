@@ -1,0 +1,135 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nex-app
+  namespace: nex
+  labels:
+    app: nex
+    component: backend
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: nex
+      component: backend
+  template:
+    metadata:
+      labels:
+        app: nex
+        component: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: nex-service-account
+      initContainers:
+      - name: init-db
+        image: nex:latest
+        command: ["/app/scripts/init-db.sh"]
+        volumeMounts:
+        - name: data-volume
+          mountPath: /app/data
+        - name: scripts-volume
+          mountPath: /app/scripts
+        env:
+        - name: DATABASE_PATH
+          value: "/app/data/nex.db"
+      containers:
+      - name: nex-app
+        image: nex:latest
+        ports:
+        - containerPort: 8000
+          name: http
+          protocol: TCP
+        - containerPort: 50051
+          name: grpc
+          protocol: TCP
+        - containerPort: 8080
+          name: health
+          protocol: TCP
+        env:
+        - name: NEX_ENV
+          value: "production"
+        - name: NEX_HOST
+          value: "0.0.0.0"
+        - name: NEX_PORT
+          value: "8000"
+        - name: NEX_GRPC_PORT
+          value: "50051"
+        - name: DATABASE_PATH
+          value: "/app/data/nex.db"
+        - name: LOG_PATH
+          value: "/app/logs"
+        - name: API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: nex-secrets
+              key: api-key
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: nex-secrets
+              key: jwt-secret
+        volumeMounts:
+        - name: data-volume
+          mountPath: /app/data
+        - name: logs-volume
+          mountPath: /app/logs
+        - name: config-volume
+          mountPath: /app/config
+        - name: scripts-volume
+          mountPath: /app/scripts
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: data-volume
+        persistentVolumeClaim:
+          claimName: nex-data-pvc
+      - name: logs-volume
+        persistentVolumeClaim:
+          claimName: nex-logs-pvc
+      - name: config-volume
+        configMap:
+          name: nex-config
+      - name: scripts-volume
+        configMap:
+          name: nex-scripts
+          defaultMode: 0755
+      restartPolicy: Always
+      securityContext:
+        fsGroup: 1000

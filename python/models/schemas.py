@@ -41,7 +41,7 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     """聊天响应模型"""
     content: str = Field(..., description="回复内容")
-    session_id: str = Field(..., description="会话ID")
+    session_id: Optional[str] = Field(None, description="会话ID")
     model_used: ModelType = Field(..., description="实际使用的模型类型")
     reasoning: Optional[str] = Field(None, description="选择该模型的原因")
     token_count: Optional[int] = Field(None, description="使用的token数量")

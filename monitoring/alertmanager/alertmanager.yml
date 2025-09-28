@@ -1,0 +1,153 @@
+global:
+  # SMTP 配置
+  smtp_smarthost: 'smtp.gmail.com:587'
+  smtp_from: 'nex-alerts@your-domain.com'
+  smtp_auth_username: 'your-email@gmail.com'
+  smtp_auth_password: 'your-app-password'
+
+# 路由配置
+route:
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'default-receiver'
+  routes:
+    # 严重告警立即发送
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 0s
+      repeat_interval: 5m
+    
+    # 数据库相关告警
+    - match:
+        component: database
+      receiver: 'database-alerts'
+      group_interval: 5m
+    
+    # 系统资源告警
+    - match:
+        component: system
+      receiver: 'system-alerts'
+      repeat_interval: 30m
+
+# 告警接收器
+receivers:
+  # 默认接收器
+  - name: 'default-receiver'
+    email_configs:
+      - to: 'team@your-domain.com'
+        subject: '[NEX] {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          Component: {{ .Labels.component }}
+          Time: {{ .StartsAt }}
+          {{ end }}
+
+  # 严重告警接收器
+  - name: 'critical-alerts'
+    email_configs:
+      - to: 'oncall@your-domain.com'
+        subject: '[CRITICAL] NEX System Alert'
+        body: |
+          🚨 CRITICAL ALERT 🚨
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          Component: {{ .Labels.component }}
+          Instance: {{ .Labels.instance }}
+          Time: {{ .StartsAt }}
+          
+          Dashboard: http://grafana:3000/d/nex-overview
+          {{ end }}
+    
+    # Slack 通知 (如果配置)
+    slack_configs:
+      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+        channel: '#alerts'
+        color: 'danger'
+        title: 'NEX Critical Alert'
+        text: |
+          {{ range .Alerts }}
+          *{{ .Annotations.summary }}*
+          {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          {{ end }}
+
+    # 企业微信通知 (如果配置)
+    wechat_configs:
+      - api_url: 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=YOUR_KEY'
+        corp_id: 'YOUR_CORP_ID'
+        to_party: 'YOUR_PARTY_ID'
+        agent_id: 'YOUR_AGENT_ID'
+        api_secret: 'YOUR_API_SECRET'
+        message: |
+          {{ range .Alerts }}
+          NEX严重告警
+          
+          告警: {{ .Annotations.summary }}
+          描述: {{ .Annotations.description }}
+          级别: {{ .Labels.severity }}
+          组件: {{ .Labels.component }}
+          时间: {{ .StartsAt }}
+          {{ end }}
+
+  # 数据库告警接收器
+  - name: 'database-alerts'
+    email_configs:
+      - to: 'dba@your-domain.com'
+        subject: '[NEX] Database Alert'
+        body: |
+          数据库告警通知
+          
+          {{ range .Alerts }}
+          告警: {{ .Annotations.summary }}
+          描述: {{ .Annotations.description }}
+          严重程度: {{ .Labels.severity }}
+          实例: {{ .Labels.instance }}
+          触发时间: {{ .StartsAt }}
+          {{ end }}
+
+  # 系统资源告警接收器
+  - name: 'system-alerts'
+    email_configs:
+      - to: 'ops@your-domain.com'
+        subject: '[NEX] System Resource Alert'
+        body: |
+          系统资源告警
+          
+          {{ range .Alerts }}
+          告警: {{ .Annotations.summary }}
+          描述: {{ .Annotations.description }}
+          严重程度: {{ .Labels.severity }}
+          节点: {{ .Labels.instance }}
+          触发时间: {{ .StartsAt }}
+          {{ end }}
+
+# 告警抑制规则
+inhibit_rules:
+  # 如果应用宕机，抑制健康检查告警
+  - source_match:
+      alertname: 'NEXApplicationDown'
+    target_match:
+      alertname: 'NEXHealthCheckFailed'
+    equal: ['instance']
+
+  # 如果系统资源严重不足，抑制一般资源告警
+  - source_match:
+      severity: 'critical'
+      component: 'system'
+    target_match:
+      severity: 'warning'
+      component: 'system'
+    equal: ['instance']
+
+# 全局模板
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'

@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "nex.fullname" . }}-config
+  labels:
+    {{- include "nex.labels" . | nindent 4 }}
+data:
+  app.yaml: |
+    server:
+      host: {{ .Values.config.app.host | quote }}
+      port: {{ .Values.config.app.port }}
+      workers: {{ .Values.config.app.workers }}
+      timeout: {{ .Values.config.app.timeout }}
+    
+    grpc:
+      host: {{ .Values.config.grpc.host | quote }}
+      port: {{ .Values.config.grpc.port }}
+      max_workers: {{ .Values.config.grpc.maxWorkers }}
+      
+    database:
+      type: {{ .Values.config.database.type | quote }}
+      path: {{ .Values.config.database.path | quote }}
+      
+    logging:
+      level: {{ .Values.config.logging.level | quote }}
+      format: {{ .Values.config.logging.format | quote }}
+      file: {{ .Values.config.logging.file | quote }}
+      max_size: {{ .Values.config.logging.maxSize | quote }}
+      backup_count: {{ .Values.config.logging.backupCount }}
+      
+    cache:
+      type: "memory"
+      ttl: 3600
+      
+    security:
+      rate_limit: 100
+      cors_origins: ["*"]

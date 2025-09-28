@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nex-data-pvc
+  namespace: nex
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard  # 根据集群实际情况调整
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nex-logs-pvc
+  namespace: nex
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: standard  # 根据集群实际情况调整
+
+---
+# 开发环境PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nex-dev-data-pvc
+  namespace: nex-dev
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: standard

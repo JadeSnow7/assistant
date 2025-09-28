@@ -1,0 +1,25 @@
+apiVersion: v2
+name: nex
+description: A Helm chart for NEX application
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+keywords:
+  - nex
+  - ai
+  - chat
+  - api
+
+home: https://github.com/example/nex
+sources:
+  - https://github.com/example/nex
+
+maintainers:
+  - name: NEX Team
+    email: team@nex.example.com
+
+dependencies: []
+
+annotations:
+  category: Application

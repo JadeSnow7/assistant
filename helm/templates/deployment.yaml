@@ -1,0 +1,135 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "nex.fullname" . }}
+  labels:
+    {{- include "nex.labels" . | nindent 4 }}
+    component: backend
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      {{- include "nex.selectorLabels" . | nindent 6 }}
+      component: backend
+  template:
+    metadata:
+      annotations:
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "nex.selectorLabels" . | nindent 8 }}
+        component: backend
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "nex.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      {{- if .Values.initContainers }}
+      initContainers:
+        {{- toYaml .Values.initContainers | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: {{ include "nex.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.config.app.port }}
+              protocol: TCP
+            - name: grpc
+              containerPort: {{ .Values.config.grpc.port }}
+              protocol: TCP
+            - name: health
+              containerPort: 8080
+              protocol: TCP
+          env:
+            {{- range .Values.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+            - name: NEX_HOST
+              value: {{ .Values.config.app.host | quote }}
+            - name: NEX_PORT
+              value: {{ .Values.config.app.port | quote }}
+            - name: NEX_GRPC_PORT
+              value: {{ .Values.config.grpc.port | quote }}
+            - name: DATABASE_PATH
+              value: {{ .Values.config.database.path | quote }}
+            - name: LOG_PATH
+              value: "/app/logs"
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "nex.fullname" . }}-secrets
+                  key: api-key
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "nex.fullname" . }}-secrets
+                  key: jwt-secret
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.persistence.enabled }}
+            - name: data-volume
+              mountPath: /app/data
+            {{- end }}
+            {{- if .Values.persistence.logs.enabled }}
+            - name: logs-volume
+              mountPath: /app/logs
+            {{- end }}
+            - name: config-volume
+              mountPath: /app/config
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+        {{- if .Values.sidecars }}
+        {{- toYaml .Values.sidecars | nindent 8 }}
+        {{- end }}
+      volumes:
+        {{- if .Values.persistence.enabled }}
+        - name: data-volume
+          persistentVolumeClaim:
+            claimName: {{ include "nex.fullname" . }}-data
+        {{- end }}
+        {{- if .Values.persistence.logs.enabled }}
+        - name: logs-volume
+          persistentVolumeClaim:
+            claimName: {{ include "nex.fullname" . }}-logs
+        {{- end }}
+        - name: config-volume
+          configMap:
+            name: {{ include "nex.fullname" . }}-config
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

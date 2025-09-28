@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package ai_assistant;
+
+// 推理请求
+message InferenceRequest {
+    string prompt = 1;
+    string model_type = 2;
+    int32 max_tokens = 3;
+    float temperature = 4;
+    bool stream = 5;
+    string session_id = 6;
+}
+
+// 推理响应
+message InferenceResponse {
+    string text = 1;
+    bool finished = 2;
+    float confidence = 3;
+    string used_model = 4;
+    int32 token_count = 5;
+    double latency_ms = 6;
+    string error = 7;
+}
+
+// 系统信息请求
+message SystemInfoRequest {
+    // 空请求
+}
+
+// 系统信息响应
+message SystemInfoResponse {
+    double cpu_usage = 1;
+    double memory_usage = 2;
+    double memory_total_gb = 3;
+    double memory_free_gb = 4;
+    double disk_usage = 5;  
+    double disk_free_gb = 6;
+    double gpu_usage = 7;
+    double gpu_memory_usage = 8;
+    int32 cpu_cores = 9;
+    string os_info = 10;
+    string timestamp = 11;
+}
+
+// 模型列表请求
+message ModelListRequest {
+    // 空请求
+}
+
+// 模型列表响应
+message ModelListResponse {
+    repeated string models = 1;
+}
+
+// 模型加载请求
+message LoadModelRequest {
+    string model_path = 1;
+    string model_name = 2;
+}
+
+// 模型加载响应  
+message LoadModelResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+// 插件执行请求
+message PluginExecuteRequest {
+    string plugin_name = 1;
+    string command = 2;
+    map<string, string> parameters = 3;
+}
+
+// 插件执行响应
+message PluginExecuteResponse {
+    bool success = 1;
+    string result = 2;
+    string error = 3;
+    double execution_time_ms = 4;
+}
+
+// 健康检查请求
+message HealthCheckRequest {
+    // 空请求
+}
+
+// 健康检查响应
+message HealthCheckResponse {
+    bool healthy = 1;
+    string status = 2;
+    map<string, string> details = 3;
+}
+
+// AI Assistant 服务定义
+service AIAssistantService {
+    // 模型推理
+    rpc Inference(InferenceRequest) returns (InferenceResponse);
+    
+    // 流式推理
+    rpc StreamInference(InferenceRequest) returns (stream InferenceResponse);
+    
+    // 获取系统信息
+    rpc GetSystemInfo(SystemInfoRequest) returns (SystemInfoResponse);
+    
+    // 获取可用模型列表
+    rpc GetModelList(ModelListRequest) returns (ModelListResponse);
+    
+    // 加载模型
+    rpc LoadModel(LoadModelRequest) returns (LoadModelResponse);
+    
+    // 卸载模型
+    rpc UnloadModel(LoadModelRequest) returns (LoadModelResponse);
+    
+    // 执行C++插件
+    rpc ExecutePlugin(PluginExecuteRequest) returns (PluginExecuteResponse);
+    
+    // 健康检查
+    rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}

@@ -1,0 +1,218 @@
+groups:
+  - name: nex_application
+    rules:
+      # 应用可用性告警
+      - alert: NEXApplicationDown
+        expr: up{job="nex-app"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: application
+        annotations:
+          summary: "NEX application is down"
+          description: "NEX application has been down for more than 1 minute"
+
+      # 健康检查失败
+      - alert: NEXHealthCheckFailed
+        expr: up{job="nex-health"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          component: health
+        annotations:
+          summary: "NEX health check failed"
+          description: "NEX health check endpoint is unreachable"
+
+      # 高错误率
+      - alert: NEXHighErrorRate
+        expr: |
+          (
+            rate(http_requests_total{job="nex-app", status=~"5.."}[5m]) / 
+            rate(http_requests_total{job="nex-app"}[5m])
+          ) * 100 > 5
+        for: 2m
+        labels:
+          severity: warning
+          component: application
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }}% over the last 5 minutes"
+
+      # 响应时间过长
+      - alert: NEXHighLatency
+        expr: |
+          histogram_quantile(0.95, 
+            rate(http_request_duration_seconds_bucket{job="nex-app"}[5m])
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+          component: performance
+        annotations:
+          summary: "High response latency detected"
+          description: "95th percentile latency is {{ $value }}s"
+
+      # CPU 使用率过高
+      - alert: NEXHighCPUUsage
+        expr: |
+          rate(process_cpu_seconds_total{job="nex-app"}[5m]) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: resources
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value }}%"
+
+      # 内存使用率过高
+      - alert: NEXHighMemoryUsage
+        expr: |
+          (
+            process_resident_memory_bytes{job="nex-app"} / 
+            (1024 * 1024 * 1024)
+          ) > 1
+        for: 5m
+        labels:
+          severity: warning
+          component: resources
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value }}GB"
+
+      # gRPC 连接失败
+      - alert: NEXGRPCDown
+        expr: up{job="nex-grpc"} == 0
+        for: 1m
+        labels:
+          severity: warning
+          component: grpc
+        annotations:
+          summary: "gRPC service is down"
+          description: "NEX gRPC service has been down for more than 1 minute"
+
+  - name: nex_database
+    rules:
+      # 数据库连接失败
+      - alert: NEXDatabaseConnectionFailed
+        expr: nex_database_connections_failed_total > 0
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "Database connection failed"
+          description: "Failed to connect to database"
+
+      # 数据库查询耗时过长
+      - alert: NEXDatabaseSlowQueries
+        expr: |
+          histogram_quantile(0.95, 
+            rate(nex_database_query_duration_seconds_bucket[5m])
+          ) > 1
+        for: 3m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Slow database queries detected"
+          description: "95th percentile query time is {{ $value }}s"
+
+  - name: system_resources
+    rules:
+      # 系统 CPU 使用率过高
+      - alert: HighSystemCPU
+        expr: |
+          100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High system CPU usage"
+          description: "System CPU usage is {{ $value }}%"
+
+      # 系统内存使用率过高
+      - alert: HighSystemMemory
+        expr: |
+          (
+            (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / 
+            node_memory_MemTotal_bytes
+          ) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High system memory usage"
+          description: "System memory usage is {{ $value }}%"
+
+      # 磁盘空间不足
+      - alert: LowDiskSpace
+        expr: |
+          (
+            (node_filesystem_size_bytes - node_filesystem_free_bytes) / 
+            node_filesystem_size_bytes
+          ) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "Low disk space"
+          description: "Disk usage is {{ $value }}% on {{ $labels.device }}"
+
+      # 磁盘空间严重不足
+      - alert: CriticalDiskSpace
+        expr: |
+          (
+            (node_filesystem_size_bytes - node_filesystem_free_bytes) / 
+            node_filesystem_size_bytes
+          ) * 100 > 95
+        for: 1m
+        labels:
+          severity: critical
+          component: system
+        annotations:
+          summary: "Critical disk space"
+          description: "Disk usage is {{ $value }}% on {{ $labels.device }}"
+
+  - name: container_resources
+    rules:
+      # 容器重启过于频繁
+      - alert: ContainerRestarting
+        expr: |
+          rate(container_start_time_seconds[15m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: container
+        annotations:
+          summary: "Container restarting frequently"
+          description: "Container {{ $labels.name }} is restarting"
+
+      # 容器 CPU 限制
+      - alert: ContainerCPUThrottling
+        expr: |
+          rate(container_cpu_cfs_throttled_seconds_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: container
+        annotations:
+          summary: "Container CPU throttling"
+          description: "Container {{ $labels.name }} is being CPU throttled"
+
+      # 容器内存使用接近限制
+      - alert: ContainerMemoryNearLimit
+        expr: |
+          (
+            container_memory_usage_bytes / 
+            container_spec_memory_limit_bytes
+          ) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          component: container
+        annotations:
+          summary: "Container memory usage near limit"
+          description: "Container {{ $labels.name }} memory usage is {{ $value }}%"

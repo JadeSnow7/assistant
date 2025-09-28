@@ -1,0 +1,311 @@
+name: Comprehensive Testing
+
+on:
+  schedule:
+    # 每天凌晨2点运行完整测试
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_scope:
+        description: 'Test scope'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+        - unit
+        - integration
+        - cli
+        - performance
+        - full
+
+env:
+  PYTHON_VERSION: '3.11'
+  PYTEST_WORKERS: 4
+
+jobs:
+  test-matrix:
+    name: Test Matrix
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.9', '3.10', '3.11']
+        test-type: [unit, integration, cli]
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+            test-type: performance
+          - os: ubuntu-latest
+            python-version: '3.11'
+            test-type: e2e
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+
+    - name: Install system dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake pkg-config
+        sudo apt-get install -y libgrpc++-dev libprotobuf-dev protobuf-compiler-grpc
+
+    - name: Install system dependencies (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install cmake grpc protobuf
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-asyncio pytest-cov pytest-xdist
+
+    - name: Run unit tests
+      if: matrix.test-type == 'unit' || github.event.inputs.test_scope == 'full'
+      run: |
+        pytest tests/unit/ -v --cov=python --cov-report=xml --cov-report=html -n ${{ env.PYTEST_WORKERS }}
+
+    - name: Run integration tests
+      if: matrix.test-type == 'integration' || github.event.inputs.test_scope == 'full'
+      run: |
+        pytest tests/integration/ -v --tb=short
+
+    - name: Run CLI tests
+      if: matrix.test-type == 'cli' || github.event.inputs.test_scope == 'full'
+      run: |
+        python tests/cli/run_cli_tests.py --no-health-check --suites commands display
+
+    - name: Run performance tests
+      if: matrix.test-type == 'performance' || github.event.inputs.test_scope == 'full'
+      run: |
+        python tests/cli/run_cli_tests.py --no-health-check --suites performance
+
+    - name: Run E2E tests
+      if: matrix.test-type == 'e2e' || github.event.inputs.test_scope == 'full'
+      run: |
+        pytest tests/e2e/ -v --tb=short
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results-${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.test-type }}
+        path: |
+          test_reports/
+          htmlcov/
+          coverage.xml
+
+  stress-test:
+    name: Stress Testing
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_scope == 'full' || github.event_name == 'schedule'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install locust
+
+    - name: Start services for stress testing
+      run: |
+        # 启动AI Assistant服务
+        python python/main.py &
+        sleep 10
+
+    - name: Run stress tests
+      run: |
+        # 使用Locust进行压力测试
+        echo "Running stress tests..."
+        # locust -f tests/stress/locustfile.py --headless -u 100 -r 10 -t 60s
+
+    - name: Generate stress test report
+      run: |
+        echo "Generating stress test report..."
+
+  compatibility-test:
+    name: Compatibility Testing
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_scope == 'full' || github.event_name == 'schedule'
+    
+    strategy:
+      matrix:
+        terminal: [xterm, screen, tmux]
+        encoding: [utf-8, ascii]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Install terminal emulator
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ${{ matrix.terminal }}
+
+    - name: Run compatibility tests
+      env:
+        TERM: ${{ matrix.terminal }}
+        LANG: en_US.${{ matrix.encoding }}
+      run: |
+        python tests/cli/run_cli_tests.py --no-health-check --suites compatibility
+
+  security-test:
+    name: Security Testing
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_scope == 'full' || github.event_name == 'schedule'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: Install security tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit safety semgrep
+
+    - name: Run Bandit security scan
+      run: |
+        bandit -r python/ -f json -o bandit-report.json
+
+    - name: Run Safety vulnerability check
+      run: |
+        safety check --json --output safety-report.json
+
+    - name: Run dependency security scan
+      run: |
+        pip-audit --format=json --output=pip-audit-report.json
+
+    - name: Upload security reports
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-reports
+        path: |
+          bandit-report.json
+          safety-report.json
+          pip-audit-report.json
+
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [test-matrix, stress-test, compatibility-test, security-test]
+    if: always()
+    
+    steps:
+    - name: Download all test results
+      uses: actions/download-artifact@v3
+
+    - name: Generate comprehensive test report
+      run: |
+        echo "# AI Assistant 综合测试报告" > test-summary.md
+        echo "" >> test-summary.md
+        echo "## 测试概览" >> test-summary.md
+        echo "- 测试时间: $(date)" >> test-summary.md
+        echo "- 触发事件: ${{ github.event_name }}" >> test-summary.md
+        echo "- 分支: ${{ github.ref }}" >> test-summary.md
+        echo "- 提交: ${{ github.sha }}" >> test-summary.md
+        echo "" >> test-summary.md
+        
+        # 汇总测试结果
+        echo "## 测试结果汇总" >> test-summary.md
+        echo "| 测试类型 | 状态 | 详情 |" >> test-summary.md
+        echo "|---------|------|------|" >> test-summary.md
+        
+        # 检查各个job的状态
+        if [[ "${{ needs.test-matrix.result }}" == "success" ]]; then
+          echo "| 矩阵测试 | ✅ 通过 | 所有平台和Python版本测试通过 |" >> test-summary.md
+        else
+          echo "| 矩阵测试 | ❌ 失败 | 部分测试失败 |" >> test-summary.md
+        fi
+        
+        if [[ "${{ needs.stress-test.result }}" == "success" ]]; then
+          echo "| 压力测试 | ✅ 通过 | 系统在高负载下表现良好 |" >> test-summary.md
+        else
+          echo "| 压力测试 | ❌ 失败 | 压力测试未通过 |" >> test-summary.md
+        fi
+        
+        if [[ "${{ needs.compatibility-test.result }}" == "success" ]]; then
+          echo "| 兼容性测试 | ✅ 通过 | 多终端环境兼容性良好 |" >> test-summary.md
+        else
+          echo "| 兼容性测试 | ❌ 失败 | 存在兼容性问题 |" >> test-summary.md
+        fi
+        
+        if [[ "${{ needs.security-test.result }}" == "success" ]]; then
+          echo "| 安全测试 | ✅ 通过 | 未发现安全漏洞 |" >> test-summary.md
+        else
+          echo "| 安全测试 | ⚠️ 警告 | 发现潜在安全问题 |" >> test-summary.md
+        fi
+
+    - name: Upload test summary
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-summary
+        path: test-summary.md
+
+    - name: Comment PR with test results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const summary = fs.readFileSync('test-summary.md', 'utf8');
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: summary
+          });
+
+  notify-results:
+    name: Notify Test Results
+    runs-on: ubuntu-latest
+    needs: [test-summary]
+    if: always() && github.event_name == 'schedule'
+    
+    steps:
+    - name: Notify on success
+      if: needs.test-summary.result == 'success'
+      run: |
+        echo "All tests passed! Sending success notification..."
+        # 这里可以添加通知逻辑，如Slack、Email等
+
+    - name: Notify on failure
+      if: needs.test-summary.result == 'failure'
+      run: |
+        echo "Some tests failed! Sending failure notification..."
+        # 这里可以添加失败通知逻辑

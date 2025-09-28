@@ -1,0 +1,205 @@
+# Default values for nex.
+# This is a YAML-formatted file.
+
+# 全局配置
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: ""
+
+# 镜像配置
+image:
+  registry: docker.io
+  repository: nex
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+# 部署配置
+replicaCount: 3
+
+# 自动扩缩容
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# 资源配置
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+# 健康检查
+livenessProbe:
+  httpGet:
+    path: /health
+    port: health
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: health
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# 服务配置
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8000
+  grpcPort: 50051
+  healthPort: 8080
+
+# Ingress配置
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: nex.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: nex-tls
+      hosts:
+        - nex.example.com
+
+# 持久化存储
+persistence:
+  enabled: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  
+  # 日志存储
+  logs:
+    enabled: true
+    size: 5Gi
+
+# 配置
+config:
+  # 应用配置
+  app:
+    host: "0.0.0.0"
+    port: 8000
+    workers: 4
+    timeout: 30
+    
+  # gRPC配置
+  grpc:
+    host: "0.0.0.0"
+    port: 50051
+    maxWorkers: 10
+    
+  # 数据库配置
+  database:
+    type: "sqlite"
+    path: "/app/data/nex.db"
+    
+  # 日志配置
+  logging:
+    level: "INFO"
+    format: "json"
+    file: "/app/logs/nex.log"
+    maxSize: "100MB"
+    backupCount: 5
+
+# 密钥配置
+secrets:
+  # API密钥
+  apiKey: "nex-api-key-secret"
+  # JWT密钥
+  jwtSecret: "jwt-secret-key-for-jwt"
+  # 数据库密码
+  dbPassword: "secure-password"
+
+# 安全配置
+securityContext:
+  enabled: true
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+# Pod中断预算
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# 服务账户
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Pod注解
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8000"
+  prometheus.io/path: "/metrics"
+
+# 节点选择器
+nodeSelector: {}
+
+# 容忍度
+tolerations: []
+
+# 亲和性
+affinity: {}
+
+# 环境变量
+env:
+  - name: NEX_ENV
+    value: "production"
+
+# 额外环境变量
+extraEnv: []
+
+# 额外卷
+extraVolumes: []
+
+# 额外卷挂载
+extraVolumeMounts: []
+
+# 初始化容器
+initContainers: []
+
+# 边车容器
+sidecars: []
+
+# 监控配置
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    path: /metrics
+    labels: {}
+
+# 网络策略
+networkPolicy:
+  enabled: false
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []
+  egress: []

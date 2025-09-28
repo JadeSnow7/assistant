@@ -1,0 +1,145 @@
+# AI Assistant Docker Compose配置
+# 用于本地开发和部署
+
+version: '3.8'
+
+services:
+  # AI Assistant主服务
+  ai-assistant:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ai-assistant:latest
+    container_name: ai-assistant-main
+    ports:
+      - "8000:8000"   # API服务端口
+      - "50051:50051" # gRPC服务端口
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - GRPC_PORT=50051
+      - LOG_LEVEL=INFO
+      - WORKERS=4
+      - DEBUG=false
+      - DATABASE_URL=sqlite:///./data/ai_assistant.db
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ./data:/app/data           # 数据持久化
+      - ./logs:/app/logs           # 日志持久化
+      - ./config:/app/config       # 配置文件
+    depends_on:
+      - redis
+      - prometheus
+    networks:
+      - ai-assistant-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Redis缓存服务
+  redis:
+    image: redis:7-alpine
+    container_name: ai-assistant-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - ai-assistant-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Prometheus监控
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ai-assistant-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - ai-assistant-network
+    restart: unless-stopped
+
+  # Grafana仪表板
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ai-assistant-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - ai-assistant-network
+    restart: unless-stopped
+
+  # Nginx反向代理
+  nginx:
+    image: nginx:alpine
+    container_name: ai-assistant-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+      - nginx-logs:/var/log/nginx
+    depends_on:
+      - ai-assistant
+    networks:
+      - ai-assistant-network
+    restart: unless-stopped
+
+  # 日志收集器
+  fluentd:
+    image: fluent/fluentd:v1.16-debian-1
+    container_name: ai-assistant-fluentd
+    volumes:
+      - ./monitoring/fluentd/fluent.conf:/fluentd/etc/fluent.conf
+      - ./logs:/var/log/ai-assistant
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+    networks:
+      - ai-assistant-network
+    restart: unless-stopped
+
+networks:
+  ai-assistant-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  redis-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  nginx-logs:
+    driver: local
