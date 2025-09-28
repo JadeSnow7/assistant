@@ -55,7 +55,7 @@ PORT=8000
 
 ```bash
 # 启动 AI Assistant 服务
-python python/main.py
+python src/main.py
 ```
 
 看到类似输出表示启动成功：

@@ -95,13 +95,13 @@
 **代码格式化工具**:
 ```bash
 # 使用 black 格式化代码
-black python/
+black src/
 
 # 使用 isort 整理导入
-isort python/
+isort src/
 
 # 使用 flake8 检查代码质量
-flake8 python/
+flake8 src/
 ```
 
 **示例代码风格**:

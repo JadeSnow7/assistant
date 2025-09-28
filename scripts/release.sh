@@ -372,7 +372,7 @@ generate_release_report() {
     # 统计代码行数
     local code_lines=0
     if command -v cloc &> /dev/null; then
-        code_lines=$(cloc python/ --json | jq '.SUM.code' 2>/dev/null || echo "0")
+        code_lines=$(cloc src/ --json | jq '.SUM.code' 2>/dev/null || echo "0")
     fi
     
     # 统计测试覆盖率

@@ -156,7 +156,7 @@ cp .env.example .env
 
 1. **启动后端服务**
 ```bash
-python python/main.py
+python src/main.py
 ```
 
 2. **启动Web GUI**
@@ -245,7 +245,7 @@ ai-assistant/
 │   │       └── package.json
 │   └── shared/                  # 共享模块
 │       └── ai_client.py        # API客户端
-├── python/                      # 后端服务
+├── src/                      # 后端服务
 │   ├── main.py                  # FastAPI入口
 │   ├── agent/                   # Agent核心逻辑
 │   ├── core/                    # 核心组件

@@ -272,6 +272,12 @@ class SessionManager:
         if session_id in self.sessions_cache:
             self.sessions_cache[session_id].updated_at = timestamp
 
+
+class Session:
+    """会话对象"""
+    
+    def __init__(self, id: str, title: str, created_at: datetime, 
+                 updated_at: datetime, metadata: Optional[Dict[str, Any]] = None):
         self.id = id
         self.title = title
         self.created_at = created_at

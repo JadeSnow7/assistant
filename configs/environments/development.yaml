@@ -1,0 +1,31 @@
+# 开发环境配置
+app:
+  debug: true
+  environment: "development"
+
+server:
+  host: "localhost"
+  port: 8000
+  workers: 1
+
+models:
+  local:
+    model_path: "models/qwen3-4b.gguf"
+    gpu_layers: 0  # 开发环境使用CPU
+    threads: 4
+  cloud:
+    timeout: 60  # 开发时允许更长超时
+
+database:
+  url: "sqlite:///data/dev_ai_assistant.db"
+  echo: true  # 开发时显示SQL
+
+logging:
+  level: "DEBUG"
+  file: "logs/dev_app.log"
+
+cache:
+  url: "redis://localhost:6379/1"  # 使用不同的Redis数据库
+
+monitoring:
+  enable_metrics: false  # 开发时关闭监控

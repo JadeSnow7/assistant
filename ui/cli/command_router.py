@@ -296,6 +296,7 @@ class MetaCommand(CommandBase):
             "/plugins": "查看插件列表",
             "/chat <消息>": "发送聊天消息",
             "/stream <消息>": "流式聊天",
+            "/msh <命令>": "现代Shell语法解释器",
             "/bash <命令>": "执行Bash命令",
             "/zsh <命令>": "执行Zsh命令",
             "/fish <命令>": "执行Fish命令",
@@ -344,6 +345,15 @@ class CommandRouter:
         # 插件命令
         plugins_cmd = PluginsCommand()
         self.register_command(plugins_cmd)
+        
+        # 现代Shell命令
+        try:
+            from .modern_shell.command import ModernShellCommand
+            modern_shell_cmd = ModernShellCommand()
+            self.register_command(modern_shell_cmd)
+        except ImportError:
+            # 如果现代Shell模块不可用，则跳过
+            pass
         
         # Shell命令
         for shell in ["bash", "zsh", "fish"]:

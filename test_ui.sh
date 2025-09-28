@@ -20,7 +20,7 @@ pip install -r requirements.txt
 
 # 启动后端服务（后台运行）
 echo "🔧 启动后端服务..."
-python python/main.py &
+python src/main.py &
 BACKEND_PID=$!
 
 # 等待后端启动

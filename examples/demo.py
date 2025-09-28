@@ -125,7 +125,7 @@ def show_quick_start():
             "\n\n",
             ("4. 后端启动:", "yellow"),
             "\n",
-            ("   python python/main.py", "white"),
+            ("   python src/main.py", "white"),
         ),
         title="[bold green]使用指南[/bold green]",
         border_style="green"

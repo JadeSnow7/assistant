@@ -259,7 +259,7 @@ start_python_api() {
 setup_directories() {
     log_info "创建必要目录..."
     
-    local directories=("logs" "data" "python/plugins" "run" "tmp")
+    local directories=("logs" "data" "src/plugins" "run" "tmp")
     
     for dir in "${directories[@]}"; do
         if [ ! -d "$dir" ]; then

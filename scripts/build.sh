@@ -554,7 +554,7 @@ main() {
     echo "   1. 运行服务: ./scripts/run_server.sh"
     echo "   2. 启动CLI:  python3 start_cli.py"
     echo "   3. 查看文档: docs/README.md"
-    echo "   4. 配置插件: 编辑 python/plugins/"
+    echo "   4. 配置插件: 编辑 src/plugins/"
     
     if [ "$ENABLE_COVERAGE" = "true" ]; then
         echo "   5. 查看覆盖率: open logs/htmlcov/index.html"

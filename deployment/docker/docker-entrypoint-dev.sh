@@ -125,7 +125,7 @@ start_debug_server() {
     log_info "启动调试服务器..."
     
     # 启动Python远程调试
-    python3 -m debugpy --listen 0.0.0.0:5678 --wait-for-client python/main.py
+    python3 -m debugpy --listen 0.0.0.0:5678 --wait-for-client src/main.py
 }
 
 # 运行测试
@@ -169,25 +169,25 @@ check_code_quality() {
     log_info "执行代码质量检查..."
     
     echo -e "${YELLOW}🔍 Running Black (代码格式化)...${NC}"
-    black --check --diff python/ ui/ || {
-        echo -e "${RED}❌ Black检查失败，运行 'black python/ ui/' 修复${NC}"
+    black --check --diff src/ ui/ || {
+        echo -e "${RED}❌ Black检查失败，运行 'black src/ ui/' 修复${NC}"
         return 1
     }
     
     echo -e "${YELLOW}🔍 Running isort (导入排序)...${NC}"
-    isort --check-only --diff python/ ui/ || {
-        echo -e "${RED}❌ isort检查失败，运行 'isort python/ ui/' 修复${NC}"
+    isort --check-only --diff src/ ui/ || {
+        echo -e "${RED}❌ isort检查失败，运行 'isort src/ ui/' 修复${NC}"
         return 1
     }
     
     echo -e "${YELLOW}🔍 Running flake8 (代码规范)...${NC}"
-    flake8 python/ ui/ --max-line-length=120 --extend-ignore=E203,W503 || {
+    flake8 src/ ui/ --max-line-length=120 --extend-ignore=E203,W503 || {
         echo -e "${RED}❌ flake8检查失败${NC}"
         return 1
     }
     
     echo -e "${YELLOW}🔍 Running mypy (类型检查)...${NC}"
-    mypy python/ --ignore-missing-imports || {
+    mypy src/ --ignore-missing-imports || {
         echo -e "${RED}❌ mypy检查失败${NC}"
         return 1
     }

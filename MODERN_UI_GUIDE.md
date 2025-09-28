@@ -64,7 +64,7 @@ npm install
 
 1. **启动后端服务**
 ```bash
-python python/main.py
+python src/main.py
 ```
 
 2. **启动Web GUI**
@@ -196,7 +196,7 @@ nex/
 │   │       └── package.json
 │   └── shared/                  # 共享模块
 │       └── ai_client.py        # API客户端
-├── python/                      # 后端服务
+├── src/                      # 后端服务
 └── modern_cli.py               # CLI入口
 ```
 

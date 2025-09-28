@@ -1,0 +1,70 @@
+app:
+  name: "nex-ai-assistant"
+  version: "1.0.0"
+  debug: false
+  environment: "production"
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  timeout: 60
+  allowed_origins:
+    - "http://localhost:3000"
+    - "http://localhost:8080"
+
+grpc:
+  server_address: "localhost:50051"
+  timeout: 30
+  max_message_length: 4194304  # 4MB
+  keepalive_timeout: 30
+
+models:
+  local:
+    provider: "llama_cpp"
+    model_path: "models/qwen3-4b.gguf"
+    context_size: 4096
+    gpu_layers: 35
+    threads: 8
+    temperature: 0.7
+    max_tokens: 1024
+  cloud:
+    provider: "gemini"
+    model: "gemini-pro"
+    temperature: 0.7
+    max_tokens: 2048
+    timeout: 30
+
+database:
+  url: "sqlite:///data/ai_assistant.db"
+  echo: false
+  pool_size: 10
+  max_overflow: 20
+
+cache:
+  provider: "redis"
+  url: "redis://localhost:6379/0"
+  ttl: 3600
+  max_connections: 10
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/app.log"
+  max_size: "10MB"
+  backup_count: 5
+
+plugins:
+  directory: "plugins/"
+  auto_load: true
+  timeout: 10
+
+security:
+  secret_key: "${SECRET_KEY}"
+  algorithm: "HS256"
+  access_token_expire_minutes: 30
+  
+monitoring:
+  enable_metrics: true
+  metrics_port: 9090
+  health_check_interval: 30

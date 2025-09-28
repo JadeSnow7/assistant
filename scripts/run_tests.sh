@@ -122,7 +122,7 @@ run_integration_tests() {
     
     # 启动测试服务
     log_info "启动测试服务..."
-    python3 python/main.py &
+    python3 src/main.py &
     local server_pid=$!
     
     # 等待服务启动
@@ -222,7 +222,7 @@ run_security_tests() {
     
     # 静态代码安全分析
     if command -v bandit &> /dev/null; then
-        bandit -r python/ -f json -o $TEST_RESULTS_DIR/security-code.json || {
+        bandit -r src/ -f json -o $TEST_RESULTS_DIR/security-code.json || {
             log_warning "代码安全分析发现问题"
         }
     else
@@ -240,7 +240,7 @@ run_code_quality_checks() {
     
     # pylint检查
     if command -v pylint &> /dev/null; then
-        pylint python/ --output-format=json > $TEST_RESULTS_DIR/pylint-report.json 2>/dev/null || {
+        pylint src/ --output-format=json > $TEST_RESULTS_DIR/pylint-report.json 2>/dev/null || {
             log_warning "pylint 检查发现问题"
         }
     else
@@ -249,7 +249,7 @@ run_code_quality_checks() {
     
     # flake8检查
     if command -v flake8 &> /dev/null; then
-        flake8 python/ --format=json --output-file=$TEST_RESULTS_DIR/flake8-report.json || {
+        flake8 src/ --format=json --output-file=$TEST_RESULTS_DIR/flake8-report.json || {
             log_warning "flake8 检查发现问题"
         }
     else
@@ -258,7 +258,7 @@ run_code_quality_checks() {
     
     # mypy类型检查
     if command -v mypy &> /dev/null; then
-        mypy python/ --json-report $TEST_RESULTS_DIR/mypy-report || {
+        mypy src/ --json-report $TEST_RESULTS_DIR/mypy-report || {
             log_warning "mypy 类型检查发现问题"
         }
     else

@@ -280,7 +280,7 @@ main() {
             
         version)
             echo "AI Assistant Docker Container"
-            echo "Version: $(cat /app/python/core/config.py | grep 'version:' | cut -d'"' -f2 || echo 'unknown')"
+            echo "Version: $(cat /app/src/core/config.py | grep 'version:' | cut -d'"' -f2 || echo 'unknown')"
             echo "Build: $(date)"
             ;;
             

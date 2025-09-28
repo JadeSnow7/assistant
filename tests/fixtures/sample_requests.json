@@ -1,0 +1,27 @@
+{
+  "simple_chat": {
+    "prompt": "Hello, how are you?",
+    "model_type": "auto_select",
+    "max_tokens": 100,
+    "temperature": 0.7
+  },
+  "complex_task": {
+    "prompt": "Write a Python function to calculate the Fibonacci sequence up to n terms",
+    "model_type": "cloud_large",
+    "max_tokens": 500,
+    "temperature": 0.3
+  },
+  "code_review": {
+    "prompt": "Review this code for bugs and improvements:\ndef bubble_sort(arr):\n    n = len(arr)\n    for i in range(n):\n        for j in range(0, n-i-1):\n            if arr[j] > arr[j+1]:\n                arr[j], arr[j+1] = arr[j+1], arr[j]\n    return arr",
+    "model_type": "cloud_large",
+    "max_tokens": 1000,
+    "temperature": 0.2
+  },
+  "stream_test": {
+    "prompt": "Tell me a short story about AI",
+    "model_type": "local_small",
+    "max_tokens": 300,
+    "temperature": 0.8,
+    "stream": true
+  }
+}
