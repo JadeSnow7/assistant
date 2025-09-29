@@ -1,0 +1,43 @@
+{
+    "name": "weather_plugin",
+    "version": "1.0.0",
+    "description": "天气查询插件，支持查询全球城市天气信息",
+    "author": "AI Assistant Team",
+    "type": "python",
+    "entry_point": "main.py",
+    "capabilities": [
+        "weather_query",
+        "weather_forecast",
+        "weather_alerts"
+    ],
+    "dependencies": [
+        "requests",
+        "json"
+    ],
+    "config_schema": {
+        "type": "object",
+        "properties": {
+            "api_key": {
+                "type": "string",
+                "description": "天气API密钥"
+            },
+            "default_units": {
+                "type": "string",
+                "enum": ["metric", "imperial"],
+                "default": "metric",
+                "description": "默认单位制"
+            },
+            "cache_duration": {
+                "type": "integer",
+                "default": 300,
+                "description": "缓存时间(秒)"
+            }
+        },
+        "required": ["api_key"]
+    },
+    "permissions": [
+        "network_access",
+        "cache_access"
+    ],
+    "enabled": true
+}

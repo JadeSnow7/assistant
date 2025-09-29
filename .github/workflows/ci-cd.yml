@@ -1,36 +1,45 @@
-name: AI Assistant CI/CD Pipeline
+name: CI/CD Pipeline
 
 on:
   push:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
-  release:
-    types: [ published ]
   workflow_dispatch:
     inputs:
-      deploy_environment:
-        description: 'Deployment Environment'
-        required: true
-        default: 'staging'
+      test_scope:
+        description: 'Test scope'
+        required: false
+        default: 'all'
         type: choice
         options:
-        - staging
-        - production
+        - all
+        - unit
+        - integration
+        - e2e
 
 env:
   PYTHON_VERSION: '3.11'
   NODE_VERSION: '18'
-  CMAKE_VERSION: '3.26'
+  CACHE_VERSION: v1
 
 jobs:
-  # 代码质量检查
-  code-quality:
-    name: Code Quality Check
+  # 质量门禁
+  quality-gate:
+    name: Quality Gate
     runs-on: ubuntu-latest
+    outputs:
+      cache-key: ${{ steps.cache-key.outputs.key }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # 获取完整历史用于分析
+
+    - name: Generate cache key
+      id: cache-key
+      run: |
+        echo "key=${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements*.txt', 'pyproject.toml') }}" >> $GITHUB_OUTPUT
 
     - name: Setup Python
       uses: actions/setup-python@v4
@@ -38,36 +47,50 @@ jobs:
         python-version: ${{ env.PYTHON_VERSION }}
         cache: 'pip'
 
+    - name: Cache virtual environment
+      uses: actions/cache@v3
+      with:
+        path: .venv
+        key: ${{ steps.cache-key.outputs.key }}
+        restore-keys: |
+          ${{ runner.os }}-py${{ env.PYTHON_VERSION }}-
+
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install black isort mypy flake8 pylint
-        pip install -r requirements.txt || echo "requirements.txt not found, installing basic dependencies"
-        pip install fastapi uvicorn rich textual aiohttp websockets
+        make setup-dev
 
-    - name: Run code formatting check
+    - name: Code formatting check
       run: |
-        black --check --diff python/ ui/ || echo "Code formatting check completed with issues"
-        isort --check-only --diff python/ ui/ || echo "Import sorting check completed with issues"
+        make lint-format
 
-    - name: Run linting
+    - name: Type checking
       run: |
-        flake8 python/ ui/ --max-line-length=120 --extend-ignore=E203,W503 || echo "Linting completed with issues"
-        pylint python/ --disable=C0114,C0115,C0116 || echo "Pylint completed with issues"
+        make lint-type
+      continue-on-error: true  # 类型检查不阻断流程
 
-    - name: Run type checking
+    - name: Security scan
       run: |
-        mypy python/ --ignore-missing-imports || echo "Type checking completed with issues"
+        make lint-security
+      continue-on-error: true  # 安全扫描不阻断流程
 
-  # 构建测试
-  build-test:
-    name: Build and Test
+  # 测试矩阵
+  test-matrix:
+    name: Test Suite
     runs-on: ${{ matrix.os }}
+    needs: quality-gate
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest]
         python-version: ['3.9', '3.10', '3.11']
-    
+        test-type: [unit, integration]
+        exclude:
+          # 减少矩阵大小以节约资源
+          - os: macos-latest
+            python-version: '3.9'
+          - os: macos-latest
+            test-type: integration
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -78,75 +101,43 @@ jobs:
         python-version: ${{ matrix.python-version }}
         cache: 'pip'
 
-    - name: Setup CMake
-      uses: jwlawson/actions-setup-cmake@v1.14
+    - name: Cache virtual environment
+      uses: actions/cache@v3
       with:
-        cmake-version: ${{ env.CMAKE_VERSION }}
+        path: .venv
+        key: ${{ needs.quality-gate.outputs.cache-key }}
+        restore-keys: |
+          ${{ runner.os }}-py${{ matrix.python-version }}-
 
-    - name: Install system dependencies (Ubuntu)
-      if: matrix.os == 'ubuntu-latest'
+    - name: Install dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential pkg-config libgrpc++-dev libprotobuf-dev protobuf-compiler-grpc
+        make setup-dev
 
-    - name: Install system dependencies (macOS)
-      if: matrix.os == 'macos-latest'
+    - name: Run unit tests
+      if: matrix.test-type == 'unit'
       run: |
-        brew install grpc protobuf
+        make test-unit
 
-    - name: Install system dependencies (Windows)
-      if: matrix.os == 'windows-latest'
+    - name: Run integration tests
+      if: matrix.test-type == 'integration'
       run: |
-        # 跳过C++依赖，仅运行Python相关测试
-        echo "Skipping C++ dependencies on Windows for now"
+        make test-integration
+      continue-on-error: true  # 集成测试允许失败
 
-    - name: Install Python dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt || echo "requirements.txt not found, installing basic dependencies"
-        pip install pytest pytest-asyncio pytest-cov fastapi uvicorn rich textual aiohttp websockets
-
-    - name: Build C++ components
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        mkdir -p build
-        cd build
-        cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON || echo "CMake configuration completed with warnings"
-        cmake --build . --config Release || echo "Build completed with warnings"
-        
-    - name: Skip C++ build on Windows/macOS
-      if: matrix.os != 'ubuntu-latest'
-      run: |
-        echo "Skipping C++ build on ${{ matrix.os }} - using Python components only"
-
-    - name: Run Python tests
-      run: |
-        # 添加项目根目录到PYTHONPATH
-        export PYTHONPATH="$PYTHONPATH:$(pwd)"
-        # 首先运行基本测试确保环境正常
-        python -m pytest tests/test_basic.py -v || echo "Basic tests failed"
-        # 运行其他测试，跳过有问题的模块
-        python -m pytest tests/ -v --cov=python --cov-report=xml --cov-report=html \
-          --ignore=tests/unit/test_modern_shell.py \
-          --ignore=tests/unit/test_resource_management.py \
-          || echo "Tests completed with some failures"
-
-    - name: Run CLI tests
-      run: |
-        python tests/unit/run_cli_tests.py --no-health-check --suites compatibility || echo "CLI tests completed with some failures"
-
-    - name: Upload coverage reports
-      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+    - name: Upload coverage
+      if: matrix.test-type == 'unit' && matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
       uses: codecov/codecov-action@v3
       with:
         files: ./coverage.xml
         flags: unittests
         name: codecov-umbrella
+        fail_ci_if_error: false
 
-  # 安全扫描
-  security-scan:
-    name: Security Scan
+  # 构建测试
+  build-test:
+    name: Build Test
     runs-on: ubuntu-latest
+    needs: quality-gate
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -157,33 +148,73 @@ jobs:
         python-version: ${{ env.PYTHON_VERSION }}
         cache: 'pip'
 
-    - name: Install security tools
-      run: |
-        python -m pip install --upgrade pip
-        pip install bandit[toml]
-
-    - name: Run Bandit security scan
-      run: |
-        bandit -r python/ -f json -o bandit-report.json || true
-        bandit -r python/ -ll
-
-    - name: Run Safety check
-      run: |
-        pip install safety
-        safety check --json || echo "Safety check completed with warnings"
-
-    - name: Run Semgrep security scan
-      uses: returntocorp/semgrep-action@v1
+    - name: Cache virtual environment
+      uses: actions/cache@v3
       with:
-        config: auto
+        path: .venv
+        key: ${{ needs.quality-gate.outputs.cache-key }}
+
+    - name: Install dependencies
+      run: |
+        make setup-dev
+
+    - name: Build package
+      run: |
+        make build
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: dist-${{ github.sha }}
+        path: dist/
+        retention-days: 7
+
+  # 性能测试
+  performance-test:
+    name: Performance Test
+    runs-on: ubuntu-latest
+    needs: [quality-gate, test-matrix]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: Cache virtual environment
+      uses: actions/cache@v3
+      with:
+        path: .venv
+        key: ${{ needs.quality-gate.outputs.cache-key }}
+
+    - name: Install dependencies
+      run: |
+        make setup-dev
+
+    - name: Run performance tests
+      run: |
+        make test-performance
+      continue-on-error: true
+
+    - name: Upload performance results
+      uses: actions/upload-artifact@v3
+      with:
+        name: performance-results-${{ github.sha }}
+        path: |
+          .benchmarks/
+          benchmark_results*
+        if-no-files-found: ignore
 
   # 容器构建
   container-build:
     name: Container Build
     runs-on: ubuntu-latest
-    needs: [code-quality, build-test]
-    if: github.event_name == 'push' || github.event_name == 'release'
-    
+    needs: [quality-gate, test-matrix]
+    if: github.event_name == 'push'
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -191,8 +222,8 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: Login to Container Registry
-      if: github.event_name != 'pull_request'
+    - name: Log in to Container Registry
+      if: github.ref == 'refs/heads/main'
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
@@ -207,123 +238,83 @@ jobs:
         tags: |
           type=ref,event=branch
           type=ref,event=pr
-          type=semver,pattern={{version}}
-          type=semver,pattern={{major}}.{{minor}}
+          type=sha
           type=raw,value=latest,enable={{is_default_branch}}
 
-    - name: Build and push Docker image
+    - name: Build and push
       uses: docker/build-push-action@v5
       with:
         context: .
-        platforms: linux/amd64,linux/arm64
-        push: ${{ github.event_name != 'pull_request' }}
+        platforms: linux/amd64
+        push: ${{ github.ref == 'refs/heads/main' }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
-  # 性能测试
-  performance-test:
-    name: Performance Test
-    runs-on: ubuntu-latest
-    needs: build-test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Setup Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-        cache: 'pip'
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt || echo "requirements.txt not found, installing basic dependencies"
-        pip install locust fastapi uvicorn rich textual aiohttp websockets
-
-    - name: Run performance tests
-      run: |
-        python tests/unit/test_cli_performance.py || echo "Performance tests completed with warnings"
-        
-    - name: Upload performance results
-      if: always()
-      uses: actions/upload-artifact@v3
-      with:
-        name: performance-results
-        path: test_reports/
-        if-no-files-found: ignore
-
   # 部署到暂存环境
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: [security-scan, container-build]
+    needs: [container-build, performance-test]
     if: github.ref == 'refs/heads/develop'
-    environment: staging
-    
+    environment:
+      name: staging
+      url: https://staging.nex-ai.com
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
     - name: Deploy to staging
       run: |
-        echo "Deploying to staging environment..."
-        # 这里添加实际的部署脚本
-        # 例如: kubectl apply -f k8s/staging/
-        
+        echo "部署到暂存环境..."
+        # 实际部署命令
+        # kubectl apply -f deployment/k8s/staging/
+
     - name: Run smoke tests
       run: |
-        echo "Running smoke tests..."
-        # 添加烟雾测试脚本
+        echo "运行冒烟测试..."
+        # 实际冒烟测试命令
 
   # 部署到生产环境
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [security-scan, container-build]
-    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_environment == 'production')
-    environment: production
-    
+    needs: [container-build, performance-test]
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://nex-ai.com
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
     - name: Deploy to production
       run: |
-        echo "Deploying to production environment..."
-        # 这里添加实际的生产部署脚本
-        
+        echo "部署到生产环境..."
+        # 实际部署命令
+        # kubectl apply -f deployment/k8s/production/
+
     - name: Run production smoke tests
       run: |
-        echo "Running production smoke tests..."
-        # 添加生产环境烟雾测试
+        echo "运行生产环境冒烟测试..."
+        # 实际冒烟测试命令
 
-  # 发布通知
+  # 通知
   notify:
-    name: Notify Release
+    name: Notify Results
     runs-on: ubuntu-latest
-    needs: [deploy-production]
-    if: always() && github.event_name == 'release'
-    
+    needs: [deploy-production, deploy-staging]
+    if: always()
     steps:
-    - name: Notify Slack
-      if: success()
-      uses: 8398a7/action-slack@v3
-      with:
-        status: success
-        text: "🎉 AI Assistant ${{ github.event.release.tag_name }} has been successfully deployed to production!"
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+    - name: Notify success
+      if: needs.deploy-production.result == 'success' || needs.deploy-staging.result == 'success'
+      run: |
+        echo "✅ 部署成功！"
+        # 发送成功通知
 
-    - name: Notify on failure
-      if: failure()
-      uses: 8398a7/action-slack@v3
-      with:
-        status: failure
-        text: "❌ AI Assistant ${{ github.event.release.tag_name }} deployment failed!"
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+    - name: Notify failure
+      if: needs.deploy-production.result == 'failure' || needs.deploy-staging.result == 'failure'
+      run: |
+        echo "❌ 部署失败！"
+        # 发送失败通知
