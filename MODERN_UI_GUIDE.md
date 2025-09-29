@@ -64,7 +64,7 @@ npm install
 
 1. **启动后端服务**
 ```bash
-python src/main.py
+python hush.py
 ```
 
 2. **启动Web GUI**
@@ -75,7 +75,7 @@ npm run dev
 
 3. **使用CLI界面**
 ```bash
-python modern_cli.py
+python hush_cli.py
 ```
 
 ## 💻 CLI模式使用指南
@@ -114,7 +114,7 @@ python modern_cli.py
 
 ```bash
 # 启动CLI
-python modern_cli.py
+python hush_cli.py
 
 # 基本对话
 > 你好，今天天气怎么样？

@@ -1,13 +1,19 @@
-# 🤖 AI Assistant - 现代化UI系统
+# 🤖 HuShell - 互协AI智能助手
+
+<div align="center">
+  <img src="./logo.png" alt="HuShell Logo" width="200" height="200">
+  <h3>HuShell: next ai assistant | 互协AI</h3>
+  <p>现代化智能AI助手系统，重新定义人机协作体验</p>
+</div>
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://python.org)
 [![C++](https://img.shields.io/badge/C++-17-red.svg)](https://isocpp.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-18+-blue.svg)](https://reactjs.org)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-Active%20Development-orange.svg)]()
+[![Repository](https://img.shields.io/badge/Repository-HuShell-blue.svg)](https://github.com/JadeSnow7/assistant)
 
-一个具有现代化用户界面的智能AI助手系统，支持CLI和Web GUI两种交互模式。
+一个具有现代化用户界面的智能AI助手系统 **HuShell（互协AI）**，支持CLI和Web GUI两种交互模式。HuShell致力于重新定义人机协作体验，让AI助手真正成为您的智能工作伙伴。
 
 ## ✨ 特性概览
 
@@ -125,8 +131,8 @@ graph TB
 
 1. **克隆项目**
 ```bash
-git clone https://github.com/your-repo/ai-assistant.git
-cd ai-assistant
+git clone https://github.com/JadeSnow7/assistant.git
+cd assistant
 ```
 
 2. **Python环境设置**
@@ -156,7 +162,7 @@ cp .env.example .env
 
 1. **启动后端服务**
 ```bash
-python src/main.py
+python hush.py
 ```
 
 2. **启动Web GUI**
@@ -167,7 +173,7 @@ npm run dev
 
 3. **使用CLI界面**
 ```bash
-python modern_cli.py
+python hush_cli.py
 ```
 
 ### 访问地址
@@ -328,7 +334,7 @@ const status = await apiClient.getSystemStatus();
 
 ```bash
 # 启动现代化CLI
-python modern_cli.py
+python hush_cli.py
 
 # 系统会显示欢迎界面
 ╭─────────────────── AI Assistant CLI v2.0.0 ────────────────────╮
@@ -402,4 +408,4 @@ python demo.py
 
 ---
 
-**AI Assistant现代化UI系统** - 让AI交互更加直观和高效！🚀
+**HuShell现代化智能助手系统** - 让AI交互更加直观和高效！🚀

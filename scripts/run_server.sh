@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# AI Assistant 增强服务启动脚本
+# HuShell 增强服务启动脚本
 set -e
 
 # 脚本版本和信息
 SCRIPT_VERSION="2.0.0"
-SCRIPT_NAME="AI Assistant 服务启动脚本"
+SCRIPT_NAME="HuShell 服务启动脚本"
 
 # 颜色定义
 RED='\033[0;31m'
@@ -24,7 +24,7 @@ log_warning() { echo -e "${YELLOW}⚠️${NC} $1"; }
 log_error() { echo -e "${RED}❌${NC} $1"; }
 log_debug() { [ "$DEBUG_MODE" = "true" ] && echo -e "${PURPLE}🐛${NC} $1"; }
 
-echo -e "${CYAN}🚀 启动AI Assistant服务...${NC}"
+echo -e "${CYAN}🚀 启动HuShell服务...${NC}"
 
 # 默认配置
 DEFAULT_HOST="0.0.0.0"
@@ -369,7 +369,7 @@ display_health_summary() {
 # 显示服务信息
 show_service_info() {
     echo ""
-    echo "🎉 AI Assistant 服务启动成功！"
+    echo "🎉 HuShell 服务启动成功！"
     echo "================================"
     echo "📡 gRPC服务:   localhost:$GRPC_PORT"
     echo "🌐 API服务:    http://$HOST:$PORT"

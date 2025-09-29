@@ -16,8 +16,8 @@ git --version
 
 ```bash
 # 1. 克隆项目
-git clone https://github.com/your-repo/ai-assistant.git
-cd ai-assistant
+git clone https://github.com/JadeSnow7/assistant.git
+cd assistant
 
 # 2. 创建虚拟环境
 python3 -m venv venv
@@ -54,8 +54,8 @@ PORT=8000
 ### 第四步：启动服务
 
 ```bash
-# 启动 AI Assistant 服务
-python src/main.py
+# 启动 HuShell 服务
+python hush.py
 ```
 
 看到类似输出表示启动成功：
@@ -71,7 +71,7 @@ INFO:     Uvicorn running on http://127.0.0.1:8000
 **方法一：使用 CLI 客户端**
 ```bash
 # 新开一个终端窗口
-cd ai-assistant
+cd assistant
 source venv/bin/activate
 python cli_client.py
 ```
@@ -317,7 +317,7 @@ LOG_LEVEL=DEBUG
 
 查看详细错误信息：
 ```bash
-python python/main.py --debug
+python hush.py --debug
 ```
 
 ## 📋 下一步学习

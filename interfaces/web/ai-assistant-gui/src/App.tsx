@@ -1,5 +1,5 @@
 import React from 'react';
-import { ConfigProvider, Layout, theme } from 'antd';
+import { ConfigProvider, Layout, theme, Space } from 'antd';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
@@ -8,6 +8,7 @@ import Plugins from './pages/Plugins';
 import SystemMonitor from './pages/SystemMonitor';
 import Settings from './pages/Settings';
 import { useAppStore } from './stores/appStore';
+import logoImg from './assets/logo.png';
 import './App.css';
 
 const { Header, Content } = Layout;
@@ -39,14 +40,21 @@ const App: React.FC = () => {
                 justifyContent: 'space-between'
               }}
             >
-              <h1 style={{ 
-                margin: 0, 
-                color: isDarkMode ? '#fff' : '#000',
-                fontSize: '20px',
-                fontWeight: 600
-              }}>
-                🤖 AI Assistant
-              </h1>
+              <Space align="center">
+                <img 
+                  src={logoImg} 
+                  alt="HuShell Logo" 
+                  style={{ height: '32px', width: '32px' }}
+                />
+                <span style={{ 
+                  margin: 0, 
+                  color: isDarkMode ? '#fff' : '#000',
+                  fontSize: '20px',
+                  fontWeight: 600
+                }}>
+                  HuShell | 互协AI
+                </span>
+              </Space>
             </Header>
             <Content style={{ 
               margin: '24px',

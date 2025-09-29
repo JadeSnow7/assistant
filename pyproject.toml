@@ -3,16 +3,16 @@ requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "nex-ai-assistant"
+name = "hushell"
 version = "0.1.0"
-description = "AI Assistant with modern shell and plugin architecture"
+description = "HuShell: next ai assistant - 互协AI智能助手系统"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
 authors = [
-    {name = "NEX Team", email = "team@nex.ai"},
+    {name = "HuShell Team", email = "team@hushell.ai"},
 ]
-keywords = ["ai", "assistant", "shell", "plugin", "llm"]
+keywords = ["ai", "assistant", "shell", "hushell", "互协", "plugin", "llm"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -26,10 +26,10 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/nex-ai/nex"
-Repository = "https://github.com/nex-ai/nex"
-Documentation = "https://nex-ai.github.io/nex"
-Issues = "https://github.com/nex-ai/nex/issues"
+Homepage = "https://github.com/JadeSnow7/assistant"
+Repository = "https://github.com/JadeSnow7/assistant"
+Documentation = "https://github.com/JadeSnow7/assistant/wiki"
+Issues = "https://github.com/JadeSnow7/assistant/issues"
 
 # Pytest configuration
 [tool.pytest.ini_options]
