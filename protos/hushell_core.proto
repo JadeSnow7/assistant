@@ -1,0 +1,363 @@
+syntax = "proto3";
+
+package hushell.core;
+
+option cc_enable_arenas = true;
+option java_package = "com.hushell.core";
+option java_multiple_files = true;
+option go_package = "github.com/hushell/core/proto";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
+
+// ==================== 通用类型定义 ====================
+
+// 错误信息
+message ErrorInfo {
+    int32 code = 1;                         // 错误代码
+    string message = 2;                     // 错误消息
+    string details = 3;                     // 详细信息
+    google.protobuf.Timestamp timestamp = 4; // 错误时间
+}
+
+// 性能指标
+message PerformanceMetrics {
+    double requests_per_second = 1;         // 每秒请求数
+    double tokens_per_second = 2;           // 每秒Token数
+    google.protobuf.Duration avg_latency = 3;     // 平均延迟
+    google.protobuf.Duration p50_latency = 4;     // P50延迟
+    google.protobuf.Duration p95_latency = 5;     // P95延迟
+    google.protobuf.Duration p99_latency = 6;     // P99延迟
+    double cpu_usage = 7;                   // CPU使用率
+    double memory_usage_mb = 8;             // 内存使用（MB）
+    double gpu_usage = 9;                   // GPU使用率
+    double gpu_memory_usage_mb = 10;        // GPU内存使用（MB）
+    int32 pending_requests = 11;           // 待处理请求数
+    int32 active_requests = 12;            // 活跃请求数
+    int64 completed_requests = 13;         // 已完成请求数
+    int64 failed_requests = 14;            // 失败请求数
+    double cache_hit_rate = 15;            // 缓存命中率
+    google.protobuf.Timestamp timestamp = 16;    // 指标时间戳
+}
+
+// ==================== 推理服务相关 ====================
+
+// 推理请求
+message InferenceRequest {
+    string request_id = 1;                  // 请求ID
+    string model_id = 2;                    // 模型ID
+    string input = 3;                       // 输入文本
+    string system_prompt = 4;               // 系统提示词
+    
+    // 推理参数
+    optional int32 max_tokens = 5;         // 最大Token数
+    optional float temperature = 6;         // 温度参数
+    optional float top_p = 7;               // Top-p参数
+    optional int32 top_k = 8;               // Top-k参数
+    
+    // 流式配置
+    bool stream = 9;                        // 是否流式输出
+    
+    // 元数据
+    map<string, string> metadata = 10;     // 请求元数据
+    google.protobuf.Timestamp created_at = 11;    // 创建时间
+}
+
+// 推理结果
+message InferenceResult {
+    string request_id = 1;                  // 请求ID
+    string model_id = 2;                    // 模型ID
+    string output = 3;                      // 输出文本
+    bool success = 4;                       // 是否成功
+    optional ErrorInfo error = 5;          // 错误信息
+    
+    // 性能指标
+    google.protobuf.Duration inference_time = 6; // 推理时间
+    google.protobuf.Duration queue_time = 7;     // 排队时间
+    google.protobuf.Duration total_time = 8;     // 总时间
+    
+    // Token统计
+    int32 input_tokens = 9;                 // 输入Token数
+    int32 output_tokens = 10;               // 输出Token数
+    int32 total_tokens = 11;                // 总Token数
+    
+    // 质量指标
+    float confidence_score = 12;            // 置信度分数
+    repeated float token_probabilities = 13; // Token概率
+    
+    // 元数据
+    map<string, string> metadata = 14;     // 结果元数据
+    google.protobuf.Timestamp completed_at = 15; // 完成时间
+}
+
+// 批量推理请求
+message BatchInferenceRequest {
+    string batch_id = 1;                    // 批次ID
+    repeated InferenceRequest requests = 2; // 推理请求列表
+    bool parallel_execution = 3;            // 是否并行执行
+    google.protobuf.Duration timeout = 4;         // 超时时间
+}
+
+// 批量推理结果
+message BatchInferenceResult {
+    string batch_id = 1;                    // 批次ID
+    repeated InferenceResult results = 2;   // 推理结果列表
+    bool all_success = 3;                   // 是否全部成功
+    google.protobuf.Duration total_time = 4;     // 总时间
+    int32 success_count = 5;                // 成功数量
+    int32 error_count = 6;                  // 错误数量
+    double average_inference_time_ms = 7;   // 平均推理时间
+}
+
+// 流式推理响应
+message StreamInferenceResponse {
+    string request_id = 1;                  // 请求ID
+    string token = 2;                       // 当前Token
+    bool is_final = 3;                      // 是否最后一个Token
+    float probability = 4;                  // Token概率
+    google.protobuf.Timestamp timestamp = 5;     // 时间戳
+    optional ErrorInfo error = 6;          // 错误信息（如果有）
+}
+
+// ==================== 模型管理相关 ====================
+
+// 模型配置
+message ModelConfig {
+    string model_id = 1;                    // 模型ID
+    string model_path = 2;                  // 模型路径
+    string model_type = 3;                  // 模型类型
+    int32 max_tokens = 4;                   // 最大Token数
+    float temperature = 5;                  // 默认温度
+    float top_p = 6;                        // 默认Top-p
+    int32 top_k = 7;                        // 默认Top-k
+    bool use_gpu = 8;                       // 是否使用GPU
+    int32 batch_size = 9;                   // 批次大小
+    int32 max_concurrent_requests = 10;     // 最大并发请求数
+    google.protobuf.Duration timeout = 11;       // 超时时间
+    bool enable_cache = 12;                 // 是否启用缓存
+    int32 cache_size = 13;                  // 缓存大小
+    map<string, string> platform_options = 14; // 平台特定选项
+}
+
+// 加载模型请求
+message LoadModelRequest {
+    ModelConfig config = 1;                 // 模型配置
+}
+
+// 加载模型响应
+message LoadModelResponse {
+    bool success = 1;                       // 是否成功
+    optional ErrorInfo error = 2;          // 错误信息
+    google.protobuf.Duration load_time = 3;      // 加载时间
+}
+
+// 卸载模型请求
+message UnloadModelRequest {
+    string model_id = 1;                    // 模型ID
+}
+
+// 卸载模型响应
+message UnloadModelResponse {
+    bool success = 1;                       // 是否成功
+    optional ErrorInfo error = 2;          // 错误信息
+}
+
+// 模型列表请求
+message ListModelsRequest {
+    // 空请求
+}
+
+// 模型信息
+message ModelInfo {
+    string model_id = 1;                    // 模型ID
+    string model_type = 2;                  // 模型类型
+    bool is_loaded = 3;                     // 是否已加载
+    google.protobuf.Timestamp loaded_at = 4;     // 加载时间
+    PerformanceMetrics metrics = 5;         // 性能指标
+    ModelConfig config = 6;                 // 模型配置
+}
+
+// 模型列表响应
+message ListModelsResponse {
+    repeated ModelInfo models = 1;          // 模型列表
+}
+
+// ==================== 系统管理相关 ====================
+
+// 系统信息请求
+message SystemInfoRequest {
+    bool include_detailed_metrics = 1;      // 是否包含详细指标
+}
+
+// 系统信息
+message SystemInfo {
+    string hostname = 1;                    // 主机名
+    string os_name = 2;                     // 操作系统名称
+    string os_version = 3;                  // 操作系统版本
+    string architecture = 4;                // 系统架构
+    int32 cpu_cores = 5;                    // CPU核心数
+    int32 cpu_threads = 6;                  // CPU线程数
+    double cpu_usage = 7;                   // CPU使用率
+    string cpu_model = 8;                   // CPU型号
+    double memory_total_gb = 9;             // 总内存（GB）
+    double memory_available_gb = 10;        // 可用内存（GB）
+    double memory_usage = 11;               // 内存使用率
+    double disk_total_gb = 12;              // 总磁盘（GB）
+    double disk_available_gb = 13;          // 可用磁盘（GB）
+    double disk_usage = 14;                 // 磁盘使用率
+    double load_average_1min = 15;          // 1分钟负载平均值
+    google.protobuf.Duration uptime = 16;         // 运行时间
+}
+
+// 系统信息响应
+message SystemInfoResponse {
+    SystemInfo system_info = 1;             // 系统信息
+    PerformanceMetrics performance = 2;     // 性能指标
+}
+
+// 性能指标请求
+message MetricsRequest {
+    google.protobuf.Duration time_range = 1;     // 时间范围
+    repeated string metric_names = 2;       // 指标名称列表
+}
+
+// 性能指标响应
+message MetricsResponse {
+    PerformanceMetrics current_metrics = 1; // 当前指标
+    repeated PerformanceMetrics historical_metrics = 2; // 历史指标
+}
+
+// 资源管理请求
+message ResourceRequest {
+    enum ActionType {
+        GET_USAGE = 0;
+        SET_LIMITS = 1;
+        CLEANUP = 2;
+        OPTIMIZE = 3;
+    }
+    ActionType action = 1;                  // 操作类型
+    map<string, string> parameters = 2;    // 参数
+}
+
+// 资源管理响应
+message ResourceResponse {
+    bool success = 1;                       // 是否成功
+    optional ErrorInfo error = 2;          // 错误信息
+    map<string, string> result = 3;        // 结果数据
+}
+
+// ==================== 插件管理相关 ====================
+
+// 插件元数据
+message PluginMetadata {
+    string name = 1;                        // 插件名称
+    string version = 2;                     // 版本
+    string description = 3;                 // 描述
+    repeated string dependencies = 4;       // 依赖列表
+    string author = 5;                      // 作者
+    map<string, string> configuration = 6; // 配置参数
+}
+
+// 加载插件请求
+message LoadPluginRequest {
+    string plugin_path = 1;                 // 插件路径
+    PluginMetadata metadata = 2;            // 插件元数据
+}
+
+// 加载插件响应
+message LoadPluginResponse {
+    bool success = 1;                       // 是否成功
+    optional ErrorInfo error = 2;          // 错误信息
+    google.protobuf.Duration load_time = 3;      // 加载时间
+}
+
+// 卸载插件请求
+message UnloadPluginRequest {
+    string plugin_name = 1;                 // 插件名称
+}
+
+// 卸载插件响应
+message UnloadPluginResponse {
+    bool success = 1;                       // 是否成功
+    optional ErrorInfo error = 2;          // 错误信息
+}
+
+// 插件列表请求
+message ListPluginsRequest {
+    // 空请求
+}
+
+// 插件信息
+message PluginInfo {
+    PluginMetadata metadata = 1;            // 插件元数据
+    bool is_loaded = 2;                     // 是否已加载
+    google.protobuf.Timestamp loaded_at = 3;     // 加载时间
+    PerformanceMetrics metrics = 4;         // 性能指标
+}
+
+// 插件列表响应
+message ListPluginsResponse {
+    repeated PluginInfo plugins = 1;        // 插件列表
+}
+
+// 插件调用请求
+message PluginCallRequest {
+    string plugin_name = 1;                 // 插件名称
+    string method_name = 2;                 // 方法名称
+    map<string, string> parameters = 3;    // 参数
+    google.protobuf.Duration timeout = 4;        // 超时时间
+}
+
+// 插件调用响应
+message PluginCallResponse {
+    bool success = 1;                       // 是否成功
+    string result = 2;                      // 结果
+    optional ErrorInfo error = 3;          // 错误信息
+    google.protobuf.Duration execution_time = 4; // 执行时间
+}
+
+// ==================== 服务定义 ====================
+
+// 核心推理服务
+service InferenceService {
+    // 单次推理
+    rpc Infer(InferenceRequest) returns (InferenceResult);
+    
+    // 流式推理
+    rpc StreamInfer(InferenceRequest) returns (stream StreamInferenceResponse);
+    
+    // 批量推理
+    rpc BatchInfer(BatchInferenceRequest) returns (BatchInferenceResult);
+    
+    // 模型管理
+    rpc LoadModel(LoadModelRequest) returns (LoadModelResponse);
+    rpc UnloadModel(UnloadModelRequest) returns (UnloadModelResponse);
+    rpc ListModels(ListModelsRequest) returns (ListModelsResponse);
+}
+
+// 系统管理服务
+service SystemService {
+    // 系统信息
+    rpc GetSystemInfo(SystemInfoRequest) returns (SystemInfoResponse);
+    
+    // 性能监控
+    rpc GetPerformanceMetrics(MetricsRequest) returns (MetricsResponse);
+    
+    // 资源管理
+    rpc ManageResources(ResourceRequest) returns (ResourceResponse);
+    
+    // 健康检查
+    rpc HealthCheck(google.protobuf.Empty) returns (SystemInfoResponse);
+}
+
+// 插件管理服务
+service PluginService {
+    // 插件生命周期
+    rpc LoadPlugin(LoadPluginRequest) returns (LoadPluginResponse);
+    rpc UnloadPlugin(UnloadPluginRequest) returns (UnloadPluginResponse);
+    rpc ListPlugins(ListPluginsRequest) returns (ListPluginsResponse);
+    
+    // 插件通信
+    rpc CallPlugin(PluginCallRequest) returns (PluginCallResponse);
+}

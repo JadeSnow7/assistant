@@ -1,0 +1,130 @@
+/* platform_config.h.in - 平台配置头文件模板 */
+#pragma once
+
+// 平台检测宏定义
+#cmakedefine HUSHELL_PLATFORM_WINDOWS
+#cmakedefine HUSHELL_PLATFORM_MACOS  
+#cmakedefine HUSHELL_PLATFORM_LINUX
+
+// 架构检测
+#cmakedefine HUSHELL_ARCH_X64
+#cmakedefine HUSHELL_ARCH_X86
+#cmakedefine HUSHELL_ARCH_ARM64
+#cmakedefine HUSHELL_ARCH_ARM
+
+// 平台特性支持
+#cmakedefine HUSHELL_HAS_SYSTEMD
+#cmakedefine HUSHELL_HAS_UNWIND
+#cmakedefine HUSHELL_HAS_NUMA
+#cmakedefine HUSHELL_HAS_EPOLL
+#cmakedefine HUSHELL_HAS_DIRECTML
+#cmakedefine HUSHELL_HAS_METAL
+#cmakedefine HUSHELL_HAS_COREML
+#cmakedefine HUSHELL_HAS_GCD
+
+// C++20特性支持
+#cmakedefine HUSHELL_HAS_COROUTINES
+#cmakedefine HUSHELL_HAS_ATOMIC
+
+// 第三方库支持
+#cmakedefine HUSHELL_ENABLE_GRPC
+#cmakedefine HUSHELL_ENABLE_TESTING
+#cmakedefine HUSHELL_ENABLE_BENCHMARKS
+#cmakedefine HUSHELL_HAS_FMT
+#cmakedefine HUSHELL_HAS_SPDLOG
+#cmakedefine HUSHELL_HAS_JSON
+#cmakedefine HUSHELL_HAS_OPENSSL
+#cmakedefine HUSHELL_HAS_CURL
+#cmakedefine HUSHELL_HAS_CUDA
+#cmakedefine HUSHELL_HAS_OPENCL
+#cmakedefine HUSHELL_HAS_SQLITE
+#cmakedefine HUSHELL_HAS_REDIS
+
+// 内存管理特性
+#cmakedefine HUSHELL_HAS_MMAP
+#cmakedefine HUSHELL_HAS_WINDOWS_MMAP
+#cmakedefine HUSHELL_HAS_HUGEPAGES
+
+// 构建信息
+#define HUSHELL_PLATFORM_NAME "@PLATFORM_NAME@"
+#define HUSHELL_BUILD_TYPE "@CMAKE_BUILD_TYPE@"
+#define HUSHELL_COMPILER "@CMAKE_CXX_COMPILER_ID@"
+#define HUSHELL_COMPILER_VERSION "@CMAKE_CXX_COMPILER_VERSION@"
+#define HUSHELL_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define HUSHELL_VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define HUSHELL_VERSION_PATCH @PROJECT_VERSION_PATCH@
+
+// 平台特定包含
+#ifdef HUSHELL_PLATFORM_WINDOWS
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+    #endif
+    #include <windows.h>
+#endif
+
+#ifdef HUSHELL_PLATFORM_LINUX
+    #include <unistd.h>
+    #include <sys/types.h>
+#endif
+
+#ifdef HUSHELL_PLATFORM_MACOS
+    #include <unistd.h>
+    #include <sys/types.h>
+    #include <mach/mach.h>
+#endif
+
+// 编译器特定属性
+#if defined(__GNUC__) || defined(__clang__)
+    #define HUSHELL_LIKELY(x)   __builtin_expect(!!(x), 1)
+    #define HUSHELL_UNLIKELY(x) __builtin_expect(!!(x), 0)
+    #define HUSHELL_FORCE_INLINE __attribute__((always_inline)) inline
+    #define HUSHELL_NO_INLINE __attribute__((noinline))
+#elif defined(_MSC_VER)
+    #define HUSHELL_LIKELY(x)   (x)
+    #define HUSHELL_UNLIKELY(x) (x)
+    #define HUSHELL_FORCE_INLINE __forceinline
+    #define HUSHELL_NO_INLINE __declspec(noinline)
+#else
+    #define HUSHELL_LIKELY(x)   (x)
+    #define HUSHELL_UNLIKELY(x) (x)
+    #define HUSHELL_FORCE_INLINE inline
+    #define HUSHELL_NO_INLINE
+#endif
+
+// 导出/导入宏
+#ifdef HUSHELL_PLATFORM_WINDOWS
+    #ifdef HUSHELL_BUILDING_DLL
+        #define HUSHELL_API __declspec(dllexport)
+    #else
+        #define HUSHELL_API __declspec(dllimport)
+    #endif
+#else
+    #define HUSHELL_API __attribute__((visibility("default")))
+#endif
+
+// 调试断言
+#ifdef HUSHELL_DEBUG_BUILD
+    #include <cassert>
+    #define HUSHELL_ASSERT(condition) assert(condition)
+    #define HUSHELL_DEBUG_ONLY(x) x
+#else
+    #define HUSHELL_ASSERT(condition) ((void)0)
+    #define HUSHELL_DEBUG_ONLY(x) ((void)0)
+#endif
+
+// 性能提示
+#define HUSHELL_CACHE_LINE_SIZE 64
+#define HUSHELL_ALIGN_CACHE alignas(HUSHELL_CACHE_LINE_SIZE)
+
+// 内存管理辅助宏
+#define HUSHELL_DISABLE_COPY(ClassName) \
+    ClassName(const ClassName&) = delete; \
+    ClassName& operator=(const ClassName&) = delete;
+
+#define HUSHELL_DISABLE_MOVE(ClassName) \
+    ClassName(ClassName&&) = delete; \
+    ClassName& operator=(ClassName&&) = delete;
+
+#define HUSHELL_DISABLE_COPY_AND_MOVE(ClassName) \
+    HUSHELL_DISABLE_COPY(ClassName) \
+    HUSHELL_DISABLE_MOVE(ClassName)
